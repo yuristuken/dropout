@@ -19,9 +19,10 @@ class NeuralNetwork:
         return matrices
 
     def load_weights(self, filename):
+        self.weight_matrices = []
         matrices = numpy.load(filename)
-        for matrix in matrices:
-            self.weight_matrices.append(matrix)
+        for id in matrices.files:
+            self.weight_matrices.append(matrices[id])
 
     def save_weights(self, filename):
         f = open(filename, "w")
