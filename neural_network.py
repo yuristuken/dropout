@@ -37,9 +37,14 @@ class NeuralNetwork:
     def activate(self, input):
         current_value = input
 
+        activations = []
+
         for i, weights in enumerate(self.weight_matrices):
             # add bias to the input
             bias_column = numpy.ones((current_value.shape[0], 1))
             current_value = numpy.concatenate((current_value, bias_column), axis=1)
             current_value = self.activation_functions[i](current_value.dot(weights))
+            activations.append(current_value)
             print "Layer " + str(i + 1) + ", Activation values: " + str(current_value)
+
+        return activations
