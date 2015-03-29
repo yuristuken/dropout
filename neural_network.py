@@ -18,10 +18,11 @@ class NeuralNetwork:
                 numpy.random.uniform(0.0, 1.0, (self.dimensions[i] + 1, self.dimensions[i + 1])))
 
     def load_weights(self, filename):
-        self.weight_matrices = []
         matrices = numpy.load(filename)
+        self.weight_matrices = [[]] * len(matrices.files)
         for file_id in reversed(matrices.files):
-            self.weight_matrices.append(matrices[file_id])
+            idx = int(file_id[4:])
+            self.weight_matrices[idx] = matrices[file_id]
 
     def save_weights(self, filename):
         f = open(filename, "w")
