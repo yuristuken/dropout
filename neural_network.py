@@ -5,7 +5,7 @@ class NeuralNetwork:
         self.dimensions = dimensions
         self.activation_functions = activation_functions
         # self.hidden_layers_count = len(dimensions)
-        numpy.random.seed(1234)
+        #numpy.random.seed(1234)
         self.weight_matrices = []
         self.generate_random_weights()
         #self.print_weights()
@@ -14,8 +14,7 @@ class NeuralNetwork:
     def generate_random_weights(self):
         self.weight_matrices = []
         for i in xrange(len(self.dimensions) - 1):
-            self.weight_matrices.append(
-                numpy.random.uniform(0.0, 1.0, (self.dimensions[i] + 1, self.dimensions[i + 1])))
+            self.weight_matrices.append(numpy.random.randn(self.dimensions[i] + 1, self.dimensions[i + 1]))
 
     def load_weights(self, filename):
         matrices = numpy.load(filename)
