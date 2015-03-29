@@ -20,12 +20,13 @@ class NeuralNetwork:
     def load_weights(self, filename):
         self.weight_matrices = []
         matrices = numpy.load(filename)
-        for file_id in matrices.files:
+        for file_id in reversed(matrices.files):
             self.weight_matrices.append(matrices[file_id])
 
     def save_weights(self, filename):
         f = open(filename, "w")
         numpy.savez(f, *self.weight_matrices)
+
 
     def print_weights(self):
         for i in xrange(len(self.dimensions) - 1):
@@ -76,3 +77,4 @@ class NeuralNetwork:
     def append_bias_column(self, value):
         bias_column = numpy.ones((value.shape[0], 1))
         return numpy.concatenate((value, bias_column), axis=1)
+
