@@ -9,6 +9,7 @@ import pickle
 
 import os, struct
 from numpy import append, array, int8, float_, zeros
+from array import array as pyarray
 
 
 def load_mnist_from_binary(dataset="training", digits=numpy.arange(10), path="."):
@@ -141,11 +142,15 @@ def compute_mnist_correct_classifications(activations, targets):
 
 
 if __name__ == "__main__":
-    nn = NeuralNetwork([28 * 28, 30, 10], [TanhActivationFunction()] + [SigmoidActivationFunction()])
+    nn = NeuralNetwork([28 * 28, 30, 10], [TanhActivationFunction()] + [SigmoidActivationFunction()], max_norm=10.0, dropout_probabilities=[0.5, 0.5])
+
+    experiment_name = 'dropout2'
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
     training_inputs, training_targets, test_inputs, test_targets = load_mnist()
+    training_inputs = training_inputs[:1000]
+    training_targets = training_targets[:1000]
 
     epochs = []
     training_errors = []
@@ -153,9 +158,9 @@ if __name__ == "__main__":
     training_corrects = []
     test_corrects = []
 
-    n_epochs = 30
-    batch_size = 20
-    learning_rate = 0.1
+    n_epochs = 10
+    batch_size = 10
+    learning_rate = 0.01
 
     logging.info(
         'Starting learning for {n_epochs} epochs with batch size of {batch_size} and learning rate of {learning_rate}'.format(
@@ -199,28 +204,35 @@ if __name__ == "__main__":
                     test_correct=test_correct
                 ))
 
-    nn.save_weights('results/weights')
+    path = 'results/' + experiment_name
 
-    f = open('results/epochs', "w")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    nn.save_weights(path + '/weights')
+
+    f = open(path + '/epochs', "w")
     pickle.dump(epochs, f)
     f.close()
-    f = open('results/training_errors', "w")
+    f = open(path + '/training_errors', "w")
     pickle.dump(training_errors, f)
     f.close()
-    f = open('results/test_errors', "w")
+    f = open(path + '/test_errors', "w")
     pickle.dump(test_errors, f)
     f.close()
-    f = open('results/training_correct', "w")
+    f = open(path + '/training_correct', "w")
     pickle.dump(training_correct, f)
     f.close()
-    f = open('results/test_correct', "w")
+    f = open(path + '/test_correct', "w")
     pickle.dump(test_correct, f)
     f.close()
 
     pyplot.plot(epochs, training_errors, 'b')
     pyplot.plot(epochs, test_errors, 'r')
-    pyplot.show()
+    pyplot.savefig(path + '/errors.png')
+    pyplot.figure()
+    #pyplot.show()
 
-    pyplot.plot(epochs, [i / 60000.0 for i in training_corrects], 'b')
-    pyplot.plot(epochs, [i / 10000.0 for i in test_corrects], 'r')
-    pyplot.show()
+    pyplot.plot(epochs, [float(i) / len(training_inputs) for i in training_corrects], 'b')
+    pyplot.plot(epochs, [float(i) / len(test_inputs) for i in test_corrects], 'r')
+    pyplot.savefig(path + '/corrects.png')

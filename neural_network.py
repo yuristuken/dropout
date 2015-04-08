@@ -1,13 +1,32 @@
 import numpy
 
 class NeuralNetwork:
-    def __init__(self, dimensions, activation_functions):
+    #
+    #    x
+    #    x          y
+    #    x          y          z
+    #    x          y
+    #    x
+    #
+    #    dim[0]     dim[1]     dim[2]
+    #               act_f[0]   act_f[1]
+    #    dp[0]      dp[1]
+    #         w[0]       w[1]
+    #
+    #   Test output: act_f[1](act_f[0](input * (w[0] / (1-dp[0]))) * (w[1] / (1-dp[1])))
+    #
+    def __init__(self, dimensions, activation_functions, dropout_probabilities=[], max_norm=numpy.inf):
         self.dimensions = dimensions
         self.activation_functions = activation_functions
+        if (dropout_probabilities == []):
+            self.dropout_probabilities = [0.0] * (len(dimensions) - 1)
+        else:
+            self.dropout_probabilities = dropout_probabilities
         # self.hidden_layers_count = len(dimensions)
-        #numpy.random.seed(1234)
+        numpy.random.seed(1234)
         self.weight_matrices = []
         self.generate_random_weights()
+        self.max_norm = max_norm
         #self.print_weights()
         return
 
@@ -34,20 +53,31 @@ class NeuralNetwork:
                   " (size: " + str(self.dimensions[i] + 1) + "*" + str(self.dimensions[i + 1]) + "): " + \
                   str(self.weight_matrices[i])
 
-    def activate(self, input_values):
+    def activate(self, input_values, test_mode=True):
         current_value = input_values
         activations = [current_value]
 
         for i, weights in enumerate(self.weight_matrices):
             current_value = self.append_bias_column(current_value)
-            current_value = self.activation_functions[i].compute(current_value.dot(weights))
+            if test_mode:
+                current_value = self.activation_functions[i].compute(
+                    current_value.dot(weights / (1 - self.dropout_probabilities[i]))
+                )
+            else:
+                dropout_mask = (numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i]).astype('float32')
+                current_value = numpy.multiply(dropout_mask, current_value)
+                # hacky, replace input
+                if len(activations) == 1:
+                    activations = [current_value[:, :-1]]
+                current_value = self.activation_functions[i].compute(current_value.dot(weights))
+
             activations.append(current_value)
             #print "Layer " + str(i + 1) + ", Activation values: " + str(current_value)
 
         return activations
 
     def back_propagation(self, input_values, targets, learning_rate):
-        activations = self.activate(input_values)
+        activations = self.activate(input_values, test_mode=False)
 
         deltas = [ numpy.multiply(self.activation_functions[-1].derivative(activations[-1]), activations[-1] - targets) ]
 
@@ -70,6 +100,9 @@ class NeuralNetwork:
             level_up_activations = self.append_bias_column(activations[i])
             self.weight_matrices[i] -= learning_rate * numpy.dot(level_up_activations.T, deltas[-1])
 
+            incoming_norms = numpy.linalg.norm(self.weight_matrices[i], axis=0)
+            divisors = numpy.where(incoming_norms > self.max_norm, incoming_norms, 1)
+            self.weight_matrices[i] = self.weight_matrices[i] / divisors
             deltas.append(next_delta)
 
         return
