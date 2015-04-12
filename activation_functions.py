@@ -27,3 +27,10 @@ class TanhActivationFunction(ActivationFunction):
 
     def derivative(self, value):
         return 1 - numpy.power(value, 2)
+
+class ReLUActivationFunction(ActivationFunction):
+    def compute(self, value):
+        return numpy.where(value > 0, value, 0.0)
+
+    def derivative(self, value):
+        return numpy.where(value > 0, 1.0, 0.0)

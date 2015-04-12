@@ -3,7 +3,6 @@ from activation_functions import *
 from matplotlib import pyplot
 from pylab import imshow, show, cm
 
-import random
 import logging
 import pickle
 
@@ -141,26 +140,63 @@ def compute_mnist_correct_classifications(activations, targets):
     return matches
 
 
-if __name__ == "__main__":
-    nn = NeuralNetwork([28 * 28, 30, 10], [TanhActivationFunction()] + [SigmoidActivationFunction()], max_norm=10.0, dropout_probabilities=[0.5, 0.5])
+def train_wrapper(**kwargs):
+    nnargs = {'dimensions': kwargs['dimensions'], 'activation_functions': kwargs['activation_functions']}
 
-    experiment_name = 'dropout2'
+    experiment_name = ','.join(str(d) for d in kwargs['dimensions'])
+    experiment_name += '_activations=' + ','.join(a.__class__.__name__ for a in kwargs['activation_functions'])
+
+    if 'dropout_probabilities' in kwargs:
+        experiment_name += '_dropout=' + ','.join(str(p) for p in kwargs['dropout_probabilities'])
+        nnargs['dropout_probabilities'] = kwargs['dropout_probabilities']
+    else:
+        experiment_name += '_nodropout'
+
+    if 'max_norm' in kwargs:
+        experiment_name += '_maxNorm=' + str(kwargs['max_norm'])
+        nnargs['max_norm'] = kwargs['max_norm']
+
+    experiment_name += '_epochs=' + str(kwargs['epochs'])
+    experiment_name += '_learningRate=' + str(kwargs['learning_rate'])
+    experiment_name += '_momentum=' + str(kwargs['momentum_coefficient'])
+    experiment_name += '_regCoefficient=' + str(kwargs['l2_regularization_coefficient'])
+    experiment_name += '_batchSize=' + str(kwargs['batch_size'])
+
+    print "Experiment: " + experiment_name
+    n_epochs = kwargs['epochs']
+    batch_size = kwargs['batch_size']
+    learning_rate = kwargs['learning_rate']
+    momentum_coefficient = kwargs['momentum_coefficient']
+    l2_regularization_coefficient = kwargs['l2_regularization_coefficient']
+
+    nn = NeuralNetwork(**nnargs)
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
     training_inputs, training_targets, test_inputs, test_targets = load_mnist()
-    training_inputs = training_inputs[:1000]
-    training_targets = training_targets[:1000]
+
+    #validation_inputs = training_inputs[1000:6000]
+    #validation_targets = training_targets[1000:6000]
+    validation_inputs = test_inputs
+    validation_targets = test_targets
+
+    rng_state = numpy.random.get_state()
+    numpy.random.shuffle(training_inputs)
+    numpy.random.set_state(rng_state)
+    numpy.random.shuffle(training_targets)
+
+    training_inputs = training_inputs[:60000]
+    training_targets = training_targets[:60000]
 
     epochs = []
     training_errors = []
-    test_errors = []
+    #test_errors = []
+    validation_errors = []
     training_corrects = []
-    test_corrects = []
+    #test_corrects = []
+    validation_corrects = []
 
-    n_epochs = 10
-    batch_size = 10
-    learning_rate = 0.01
+    initial_learning_rate = learning_rate
 
     logging.info(
         'Starting learning for {n_epochs} epochs with batch size of {batch_size} and learning rate of {learning_rate}'.format(
@@ -171,7 +207,7 @@ if __name__ == "__main__":
 
     for i in xrange(n_epochs):
         shuffled_indices = range(len(training_inputs))
-        random.shuffle(shuffled_indices)
+        numpy.random.shuffle(shuffled_indices)
 
         mini_batch_indices = [shuffled_indices[k:k + batch_size] for k in xrange(0, len(training_inputs), batch_size)]
 
@@ -179,32 +215,51 @@ if __name__ == "__main__":
             inputs_sample = numpy.array([training_inputs[k] for k in mini_batch])
             targets_sample = numpy.array([training_targets[k] for k in mini_batch])
 
-            nn.back_propagation(inputs_sample, targets_sample, learning_rate)
+            nn.back_propagation(inputs_sample, targets_sample, learning_rate, momentum_coefficient, l2_regularization_coefficient)
+
+        learning_rate = initial_learning_rate / (1.0 + 0.01*float(i))
+        print "new learning rate: " + str(learning_rate)
 
         training_activations = nn.activate(training_inputs)[-1]
         training_error = numpy.mean((training_activations - training_targets) ** 2)
         training_correct = compute_mnist_correct_classifications(training_activations, training_targets)
-        test_activations = nn.activate(test_inputs)[-1]
-        test_error = numpy.mean((test_activations - test_targets) ** 2)
-        test_correct = compute_mnist_correct_classifications(test_activations, test_targets)
+
+        #test_activations = nn.activate(test_inputs)[-1]
+        #test_error = numpy.mean((test_activations - test_targets) ** 2)
+        #test_correct = compute_mnist_correct_classifications(test_activations, test_targets)
+
+        validation_activations = nn.activate(validation_inputs)[-1]
+        validation_error = numpy.mean((validation_activations - validation_targets) ** 2)
+        validation_correct = compute_mnist_correct_classifications(validation_activations, validation_targets)
 
         epochs.append(i)
+
         training_errors.append(training_error)
-        test_errors.append(test_error)
         training_corrects.append(training_correct)
-        test_corrects.append(test_correct)
+
+        #test_errors.append(test_error)
+        #test_corrects.append(test_correct)
+
+        validation_errors.append(validation_error)
+        validation_corrects.append(validation_correct)
 
         if i % 1 == 0:
             logging.info(
-                'Epoch: {epoch}, Training error: {training_error}, Test error: {test_error}, Training correct: {training_correct}, Test correct: {test_correct}'.format(
-                    epoch=i,
+                'Epoch: {epoch}, '.format(epoch=i) +
+                'Training error: {training_error}, Validation error: {validation_error}, '.format(
                     training_error=training_error,
-                    test_error=test_error,
+                    validation_error=validation_error
+                ) +
+                'Training correct: {training_correct} ({training_correct_percent}%), '.format(
                     training_correct=training_correct,
-                    test_correct=test_correct
+                    training_correct_percent=int(float(training_correct)/len(training_inputs)*10000) / 100.0
+                ) +
+                'Validation correct: {validation_correct} ({validation_correct_percent}%)'.format(
+                    validation_correct=validation_correct,
+                    validation_correct_percent=int(float(validation_correct)/len(validation_inputs)*10000) / 100.0
                 ))
 
-    path = 'results/' + experiment_name
+    path = 'results_20150411_big/' + experiment_name
 
     if not os.path.exists(path):
         os.makedirs(path)
@@ -217,22 +272,44 @@ if __name__ == "__main__":
     f = open(path + '/training_errors', "w")
     pickle.dump(training_errors, f)
     f.close()
-    f = open(path + '/test_errors', "w")
-    pickle.dump(test_errors, f)
+    #f = open(path + '/test_errors', "w")
+    #pickle.dump(test_errors, f)
+    #f.close()
+    f = open(path + '/validation_errors', "w")
+    pickle.dump(validation_errors, f)
     f.close()
-    f = open(path + '/training_correct', "w")
-    pickle.dump(training_correct, f)
+    f = open(path + '/training_corrects', "w")
+    pickle.dump(training_corrects, f)
     f.close()
-    f = open(path + '/test_correct', "w")
-    pickle.dump(test_correct, f)
+    f = open(path + '/validation_corrects', "w")
+    pickle.dump(validation_corrects, f)
     f.close()
 
     pyplot.plot(epochs, training_errors, 'b')
-    pyplot.plot(epochs, test_errors, 'r')
+    #pyplot.plot(epochs, test_errors, 'r')
+    pyplot.plot(epochs, validation_errors, 'g')
     pyplot.savefig(path + '/errors.png')
     pyplot.figure()
     #pyplot.show()
 
     pyplot.plot(epochs, [float(i) / len(training_inputs) for i in training_corrects], 'b')
-    pyplot.plot(epochs, [float(i) / len(test_inputs) for i in test_corrects], 'r')
+    #pyplot.plot(epochs, [float(i) / len(test_inputs) for i in test_corrects], 'r')
+    pyplot.plot(epochs, [float(i) / len(validation_inputs) for i in validation_corrects], 'g')
     pyplot.savefig(path + '/corrects.png')
+    pyplot.figure()
+
+
+if __name__ == "__main__":
+    for learning_rate in [0.0001]:
+        for max_norm in [4.0, 6.0]:
+            train_wrapper(epochs=150,
+                          learning_rate=learning_rate,
+                          batch_size=50,
+                          dimensions=[28 * 28, 1024, 1024, 10],
+                          activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
+                          dropout_probabilities=[0.5, 0.5, 0.5],
+                          max_norm=max_norm,
+                          momentum_coefficient=0.95,
+                          l2_regularization_coefficient=0.0
+            )
+
