@@ -1,7 +1,9 @@
+#!/usr/bin/python
+
 from neural_network import *
 from activation_functions import *
-from matplotlib import pyplot
-from pylab import imshow, show, cm
+#from matplotlib import pyplot
+#from pylab import imshow, show, cm
 
 import logging
 import pickle
@@ -72,7 +74,7 @@ def save_array(filename, x):
 
 def convert_and_dump_MNIST():
     logging.info("Loading MNIST training dataset...")
-    training_inputs, training_targets = load_mnist_from_binary(dataset="training", path="/Users/yuristuken/PycharmProjects/dropout")
+    training_inputs, training_targets = load_mnist_from_binary(dataset="training", path="/home/yustuken/dropout/dropout")
     logging.info("MNIST training dataset Loaded")
 
     logging.info("Dumping MNIST training dataset into file")
@@ -81,7 +83,7 @@ def convert_and_dump_MNIST():
     logging.info("Training MNIST dataset dumped into file")
 
     logging.info("Loading MNIST testing dataset...")
-    test_inputs, test_targets = load_mnist_from_binary(dataset="testing", path="/Users/yuristuken/PycharmProjects/dropout")
+    test_inputs, test_targets = load_mnist_from_binary(dataset="testing", path="/home/yustuken/dropout/dropout")
     logging.info("MNIST testing dataset Loaded")
 
     logging.info("Dumping MNIST testing dataset into file")
@@ -171,7 +173,9 @@ def train_wrapper(**kwargs):
 
     nn = NeuralNetwork(**nnargs)
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+    ##################
+    #nn.load_weights('/root/dropout/results_20150420_big/784,1024,1024,10_activations=TanhActivationFunction,TanhActivationFunction,SigmoidActivationFunction_dropout=0.5,0.5,0.5_maxNorm=4.0_epochs=150_learningRate=0.001_momentum=0.95_regCoefficient=0.0_batchSize=50/weights')
+    ##################
 
     training_inputs, training_targets, test_inputs, test_targets = load_mnist()
 
@@ -218,12 +222,23 @@ def train_wrapper(**kwargs):
             nn.back_propagation(inputs_sample, targets_sample, learning_rate, momentum_coefficient, l2_regularization_coefficient)
 
         learning_rate = initial_learning_rate / (1.0 + 0.01*float(i))
-        print "new learning rate: " + str(learning_rate)
-
-        training_activations = nn.activate(training_inputs)[-1]
-        training_error = numpy.mean((training_activations - training_targets) ** 2)
-        training_correct = compute_mnist_correct_classifications(training_activations, training_targets)
-
+        logging.info("new learning rate: " + str(learning_rate))
+	
+        training_activation_batch_size = 10000
+        
+        training_indices = [(k, k + training_activation_batch_size) for k in xrange(0, len(training_inputs), training_activation_batch_size)]
+        
+        training_correct_acc = 0
+        training_error_acc = []
+        for batch in training_indices:        
+            training_activations = nn.activate(training_inputs[batch[0]:batch[1]])[-1]
+            training_error = (training_activations - training_targets[batch[0]:batch[1]]) ** 2
+            #logging.info("Error: " + str(training_error))
+            training_error_acc.append(training_error)
+            training_correct = compute_mnist_correct_classifications(training_activations, training_targets[batch[0]:batch[1]])
+            #logging.info("Correct: " + str(training_correct))
+            training_correct_acc = training_correct_acc + training_correct
+            #logging.info("Correct acc: " + str(training_correct_acc))
         #test_activations = nn.activate(test_inputs)[-1]
         #test_error = numpy.mean((test_activations - test_targets) ** 2)
         #test_correct = compute_mnist_correct_classifications(test_activations, test_targets)
@@ -233,9 +248,10 @@ def train_wrapper(**kwargs):
         validation_correct = compute_mnist_correct_classifications(validation_activations, validation_targets)
 
         epochs.append(i)
-
+        
+        training_error = numpy.mean(training_error_acc)
         training_errors.append(training_error)
-        training_corrects.append(training_correct)
+        training_corrects.append(training_correct_acc)
 
         #test_errors.append(test_error)
         #test_corrects.append(test_correct)
@@ -251,15 +267,15 @@ def train_wrapper(**kwargs):
                     validation_error=validation_error
                 ) +
                 'Training correct: {training_correct} ({training_correct_percent}%), '.format(
-                    training_correct=training_correct,
-                    training_correct_percent=int(float(training_correct)/len(training_inputs)*10000) / 100.0
+                    training_correct=training_correct_acc,
+                    training_correct_percent=int(float(training_correct_acc)/len(training_inputs)*10000) / 100.0
                 ) +
                 'Validation correct: {validation_correct} ({validation_correct_percent}%)'.format(
                     validation_correct=validation_correct,
                     validation_correct_percent=int(float(validation_correct)/len(validation_inputs)*10000) / 100.0
                 ))
 
-    path = 'results_20150411_big/' + experiment_name
+    path = 'results_20150423_big/' + experiment_name
 
     if not os.path.exists(path):
         os.makedirs(path)
@@ -285,31 +301,48 @@ def train_wrapper(**kwargs):
     pickle.dump(validation_corrects, f)
     f.close()
 
-    pyplot.plot(epochs, training_errors, 'b')
+    #pyplot.plot(epochs, training_errors, 'b')
     #pyplot.plot(epochs, test_errors, 'r')
-    pyplot.plot(epochs, validation_errors, 'g')
-    pyplot.savefig(path + '/errors.png')
-    pyplot.figure()
+    #pyplot.plot(epochs, validation_errors, 'g')
+    #pyplot.savefig(path + '/errors.png')
+    #pyplot.figure()
     #pyplot.show()
 
-    pyplot.plot(epochs, [float(i) / len(training_inputs) for i in training_corrects], 'b')
+    #pyplot.plot(epochs, [float(i) / len(training_inputs) for i in training_corrects], 'b')
     #pyplot.plot(epochs, [float(i) / len(test_inputs) for i in test_corrects], 'r')
-    pyplot.plot(epochs, [float(i) / len(validation_inputs) for i in validation_corrects], 'g')
-    pyplot.savefig(path + '/corrects.png')
-    pyplot.figure()
+    #pyplot.plot(epochs, [float(i) / len(validation_inputs) for i in validation_corrects], 'g')
+    #pyplot.savefig(path + '/corrects.png')
+    #pyplot.figure()
 
 
 if __name__ == "__main__":
-    for learning_rate in [0.0001]:
-        for max_norm in [4.0, 6.0]:
-            train_wrapper(epochs=150,
-                          learning_rate=learning_rate,
-                          batch_size=50,
-                          dimensions=[28 * 28, 1024, 1024, 10],
-                          activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
-                          dropout_probabilities=[0.5, 0.5, 0.5],
-                          max_norm=max_norm,
-                          momentum_coefficient=0.95,
-                          l2_regularization_coefficient=0.0
-            )
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+
+
+    #784,1024,1024,10_activations=TanhActivationFunction,TanhActivationFunction,SigmoidActivationFunction_dropout=0.5,0.5,0.5_maxNorm=4.0_epochs=150_learningRate=0.001_momentum=0.95_regCoefficient=0.0_batchSize=50
+    train_wrapper(
+        epochs=150,
+        learning_rate=0.001,
+        batch_size=50,
+        dimensions=[28 * 28, 1024, 1024, 10],
+        activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
+        dropout_probabilities=[0.2, 0.5, 0.5],
+        max_norm=2.0,
+        momentum_coefficient=0.95,
+        l2_regularization_coefficient=0.0
+    )
+    #convert_and_dump_MNIST()
+
+    #for learning_rate in [0.005, 0.001]:
+    #    for max_norm in [4.0, 6.0]:
+    #        train_wrapper(epochs=150,
+    #                      learning_rate=learning_rate,
+    #                      batch_size=50,
+    #                      dimensions=[28 * 28, 1024, 1024, 10],
+    #                      activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
+    #                      dropout_probabilities=[0.0, 0.0, 0.0],
+    #                      max_norm=max_norm,
+    #                      momentum_coefficient=0.95,
+    #                      l2_regularization_coefficient=0.0
+    #        )
 

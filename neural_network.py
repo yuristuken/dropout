@@ -63,9 +63,11 @@ class NeuralNetwork:
         for i, weights in enumerate(self.weight_matrices):
             current_value = self.append_bias_column(current_value)
             if test_mode:
-                current_value = self.activation_functions[i].compute(
-                    current_value.dot(weights / (1 - self.dropout_probabilities[i]))
-                )
+                weights_scaled = weights / (1 - self.dropout_probabilities[i])
+		current_value = self.activation_functions[i].compute(current_value.dot(weights_scaled))
+                #current_value = self.activation_functions[i].compute(
+                #    current_value.dot(weights / (1 - self.dropout_probabilities[i]))
+                #)
             else:
                 dropout_mask = (numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i]).astype('float32')
                 current_value = numpy.multiply(dropout_mask, current_value)
@@ -112,7 +114,7 @@ class NeuralNetwork:
 
             # constrain max norm only for hidden units
             if i < len(self.dimensions) - 1:
-                incoming_norms = numpy.linalg.norm(self.weight_matrices[i], axis=0)
+                incoming_norms = numpy.apply_along_axis(numpy.linalg.norm, 0, self.weight_matrices[i])#numpy.linalg.norm(self.weight_matrices[i], axis=0)
                 divisors = numpy.where(incoming_norms > self.max_norm, incoming_norms / self.max_norm, 1)
                 self.weight_matrices[i] = self.weight_matrices[i] / divisors
 

@@ -15,7 +15,7 @@ class ActivationFunction:
 
 class SigmoidActivationFunction(ActivationFunction):
     def compute(self, value):
-        return scipy.special.expit(value)
+        return 1.0 / (1.0 + numpy.exp(-value)) #scipy.special.expit(value)
 
     def derivative(self, value):
         return numpy.multiply(self.compute(value), 1 - self.compute(value))
