@@ -63,8 +63,9 @@ class NeuralNetwork:
         for i, weights in enumerate(self.weight_matrices):
             current_value = self.append_bias_column(current_value)
             if test_mode:
-                weights_scaled = weights / (1 - self.dropout_probabilities[i])
-		current_value = self.activation_functions[i].compute(current_value.dot(weights_scaled))
+                #weights_scaled = weights / (1 - self.dropout_probabilities[i])
+                weights_scaled = weights * (1 - self.dropout_probabilities[i])
+                current_value = self.activation_functions[i].compute(current_value.dot(weights_scaled))
                 #current_value = self.activation_functions[i].compute(
                 #    current_value.dot(weights / (1 - self.dropout_probabilities[i]))
                 #)
