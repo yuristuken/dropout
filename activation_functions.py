@@ -1,6 +1,4 @@
 import numpy
-import scipy.special
-
 
 class ActivationFunction:
     def __init__(self):
