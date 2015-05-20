@@ -34,8 +34,15 @@ class NeuralNetwork:
     def generate_random_weights(self):
         self.weight_matrices = []
         for i in xrange(len(self.dimensions) - 1):
-            self.weight_matrices.append(numpy.random.randn(self.dimensions[i] + 1, self.dimensions[i + 1]))
-            self.velocities.append(numpy.zeros(self.weight_matrices[-1].shape))
+            self.weight_matrices.append(
+                numpy.random.randn(
+                    self.dimensions[i] + 1,
+                    self.dimensions[i + 1]
+                )
+            )
+            self.velocities.append(
+                numpy.zeros(self.weight_matrices[-1].shape)
+            )
 
     def load_weights(self, filename):
         matrices = numpy.load(filename)
@@ -64,10 +71,14 @@ class NeuralNetwork:
             current_value = self.append_bias_column(current_value)
             if test_mode:
                 weights_scaled = weights * (1 - self.dropout_probabilities[i])
-                current_value = self.activation_functions[i].compute(current_value.dot(weights_scaled))
+                current_value = self.activation_functions[i].compute(
+                    current_value.dot(weights_scaled)
+                )
             else:
                 if self.dropout_type == 0:
-                    dropout_mask = (numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i]).astype('float32')
+                    dropout_mask = (
+                        numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i]
+                        ).astype('float32')
                 elif self.dropout_type == 1:
                     alpha = self.dropout_extra_param
                     beta = alpha * self.dropout_probabilities[i] / (1.0 - self.dropout_probabilities[i])
@@ -75,14 +86,20 @@ class NeuralNetwork:
                 elif self.dropout_type == 1:
                     x = self.dropout_extra_param
                     p = self.dropout_probabilities[i]
-                    dropout_mask = numpy.where(numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i], 1 + x * p / (1.0 - p), -x)
+                    dropout_mask = numpy.where(
+                        numpy.random.rand(*current_value.shape) > self.dropout_probabilities[i],
+                        1 + x * p / (1.0 - p),
+                        -x
+                    )
                 else:
                     print "Wrong dropout_type!!!"
                 current_value = numpy.multiply(dropout_mask, current_value)
                 # hacky, replace input
                 if len(activations) == 1:
                     activations = [current_value[:, :-1]]
-                current_value = self.activation_functions[i].compute(current_value.dot(weights))
+                current_value = self.activation_functions[i].compute(
+                    current_value.dot(weights)
+                )
 
             activations.append(current_value)
 
@@ -99,8 +116,10 @@ class NeuralNetwork:
             next_delta = numpy.multiply(numpy.dot(current_weights, deltas[-1].T).T, self.activation_functions[i-1].derivative(activations[i]))
 
             level_up_activations = self.append_bias_column(activations[i])
-            self.velocities[i] = momentum_coefficient * self.velocities[i] - \
-                                 learning_rate * numpy.dot(level_up_activations.T, deltas[-1])
+            self.velocities[i] = \
+                    momentum_coefficient * \
+                    self.velocities[i] - \
+                    learning_rate * numpy.dot(level_up_activations.T, deltas[-1])
 
             weight_decay = (1.0 - l2_regularization_coefficient * learning_rate) * numpy.ones((self.weight_matrices[i].shape[0] - 1, self.weight_matrices[i].shape[1]))
             weight_decay = numpy.concatenate((weight_decay, numpy.ones((1, self.weight_matrices[i].shape[1]))))
@@ -109,7 +128,8 @@ class NeuralNetwork:
 
             # constrain max norm only for hidden units
             if i < len(self.dimensions) - 1:
-                incoming_norms = numpy.apply_along_axis(numpy.linalg.norm, 0, self.weight_matrices[i])#numpy.linalg.norm(self.weight_matrices[i], axis=0)
+                # numpy.linalg.norm(self.weight_matrices[i], axis=0)
+                incoming_norms = numpy.apply_along_axis(numpy.linalg.norm, 0, self.weight_matrices[i])
                 divisors = numpy.where(incoming_norms > self.max_norm, incoming_norms / self.max_norm, 1)
                 self.weight_matrices[i] = self.weight_matrices[i] / divisors
 
@@ -120,4 +140,5 @@ class NeuralNetwork:
     def append_bias_column(self, value):
         bias_column = numpy.ones((value.shape[0], 1))
         return numpy.concatenate((value, bias_column), axis=1)
+
 

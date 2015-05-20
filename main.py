@@ -221,12 +221,18 @@ def train_wrapper(**kwargs):
             training_activations = nn.activate(training_inputs[batch[0]:batch[1]])[-1]
             training_error = (training_activations - training_targets[batch[0]:batch[1]]) ** 2
             training_error_acc.append(training_error)
-            training_correct = compute_mnist_correct_classifications(training_activations, training_targets[batch[0]:batch[1]])
+            training_correct = compute_mnist_correct_classifications(
+                training_activations,
+                training_targets[batch[0]:batch[1]]
+            )
             training_correct_acc = training_correct_acc + training_correct
 
         validation_activations = nn.activate(validation_inputs)[-1]
         validation_error = numpy.mean((validation_activations - validation_targets) ** 2)
-        validation_correct = compute_mnist_correct_classifications(validation_activations, validation_targets)
+        validation_correct = compute_mnist_correct_classifications(
+            validation_activations,
+            validation_targets
+        )
 
         epochs.append(i)
 
@@ -246,11 +252,11 @@ def train_wrapper(**kwargs):
                 ) +
                 'Training correct: {training_correct} ({training_correct_percent}%), '.format(
                     training_correct=training_correct_acc,
-                    training_correct_percent=int(float(training_correct_acc)/len(training_inputs)*10000) / 100.0
+                    training_correct_percent=int(float(training_correct_acc) / len(training_inputs) * 10000) / 100.0
                 ) +
                 'Validation correct: {validation_correct} ({validation_correct_percent}%)'.format(
                     validation_correct=validation_correct,
-                    validation_correct_percent=int(float(validation_correct)/len(validation_inputs)*10000) / 100.0
+                    validation_correct_percent=int(float(validation_correct) / len(validation_inputs) * 10000) / 100.0
                 ))
 
     path = 'results_20150423_big/' + experiment_name
