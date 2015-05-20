@@ -2,8 +2,6 @@
 
 from neural_network import *
 from activation_functions import *
-#from matplotlib import pyplot
-#from pylab import imshow, show, cm
 
 import logging
 import pickle
@@ -41,7 +39,6 @@ def load_mnist_from_binary(dataset="training", digits=numpy.arange(10), path="."
 
     ind = [k for k in range(size) if lbl[k] in digits]
     N = len(ind)
-    # N = 10
 
     images = zeros((N, rows * cols), dtype=float_)
     targets = zeros((N, 10), dtype=int8)
@@ -58,8 +55,6 @@ def load_mnist_from_binary(dataset="training", digits=numpy.arange(10), path="."
         images[i] = image_f
 
         targets[i][lbl[ind[i]]] = 1
-        # labels[i] = lbl[ind[i]]
-
     return images, targets
 
 
@@ -173,14 +168,8 @@ def train_wrapper(**kwargs):
 
     nn = NeuralNetwork(**nnargs)
 
-    ##################
-    #nn.load_weights('/root/dropout/results_20150420_big/784,1024,1024,10_activations=TanhActivationFunction,TanhActivationFunction,SigmoidActivationFunction_dropout=0.5,0.5,0.5_maxNorm=4.0_epochs=150_learningRate=0.001_momentum=0.95_regCoefficient=0.0_batchSize=50/weights')
-    ##################
-
     training_inputs, training_targets, test_inputs, test_targets = load_mnist()
 
-    #validation_inputs = training_inputs[1000:6000]
-    #validation_targets = training_targets[1000:6000]
     validation_inputs = test_inputs
     validation_targets = test_targets
 
@@ -194,10 +183,8 @@ def train_wrapper(**kwargs):
 
     epochs = []
     training_errors = []
-    #test_errors = []
     validation_errors = []
     training_corrects = []
-    #test_corrects = []
     validation_corrects = []
 
     initial_learning_rate = learning_rate
@@ -222,39 +209,30 @@ def train_wrapper(**kwargs):
             nn.back_propagation(inputs_sample, targets_sample, learning_rate, momentum_coefficient, l2_regularization_coefficient)
 
         learning_rate = initial_learning_rate / (1.0 + 0.01*float(i))
-        logging.info("new learning rate: " + str(learning_rate))
-	
+        logging.info("New learning rate: " + str(learning_rate))
+
         training_activation_batch_size = 10000
-        
+
         training_indices = [(k, k + training_activation_batch_size) for k in xrange(0, len(training_inputs), training_activation_batch_size)]
-        
+
         training_correct_acc = 0
         training_error_acc = []
-        for batch in training_indices:        
+        for batch in training_indices:
             training_activations = nn.activate(training_inputs[batch[0]:batch[1]])[-1]
             training_error = (training_activations - training_targets[batch[0]:batch[1]]) ** 2
-            #logging.info("Error: " + str(training_error))
             training_error_acc.append(training_error)
             training_correct = compute_mnist_correct_classifications(training_activations, training_targets[batch[0]:batch[1]])
-            #logging.info("Correct: " + str(training_correct))
             training_correct_acc = training_correct_acc + training_correct
-            #logging.info("Correct acc: " + str(training_correct_acc))
-        #test_activations = nn.activate(test_inputs)[-1]
-        #test_error = numpy.mean((test_activations - test_targets) ** 2)
-        #test_correct = compute_mnist_correct_classifications(test_activations, test_targets)
 
         validation_activations = nn.activate(validation_inputs)[-1]
         validation_error = numpy.mean((validation_activations - validation_targets) ** 2)
         validation_correct = compute_mnist_correct_classifications(validation_activations, validation_targets)
 
         epochs.append(i)
-        
+
         training_error = numpy.mean(training_error_acc)
         training_errors.append(training_error)
         training_corrects.append(training_correct_acc)
-
-        #test_errors.append(test_error)
-        #test_corrects.append(test_correct)
 
         validation_errors.append(validation_error)
         validation_corrects.append(validation_correct)
@@ -282,44 +260,26 @@ def train_wrapper(**kwargs):
 
     nn.save_weights(path + '/weights')
 
-    f = open(path + '/epochs', "w")
-    pickle.dump(epochs, f)
-    f.close()
-    f = open(path + '/training_errors', "w")
-    pickle.dump(training_errors, f)
-    f.close()
-    #f = open(path + '/test_errors', "w")
-    #pickle.dump(test_errors, f)
-    #f.close()
-    f = open(path + '/validation_errors', "w")
-    pickle.dump(validation_errors, f)
-    f.close()
-    f = open(path + '/training_corrects', "w")
-    pickle.dump(training_corrects, f)
-    f.close()
-    f = open(path + '/validation_corrects', "w")
-    pickle.dump(validation_corrects, f)
-    f.close()
+    with open(path + '/epochs', "w") as f:
+        pickle.dump(epochs, f)
 
-    #pyplot.plot(epochs, training_errors, 'b')
-    #pyplot.plot(epochs, test_errors, 'r')
-    #pyplot.plot(epochs, validation_errors, 'g')
-    #pyplot.savefig(path + '/errors.png')
-    #pyplot.figure()
-    #pyplot.show()
+    with open(path + '/training_errors', "w") as f:
+        pickle.dump(training_errors, f)
 
-    #pyplot.plot(epochs, [float(i) / len(training_inputs) for i in training_corrects], 'b')
-    #pyplot.plot(epochs, [float(i) / len(test_inputs) for i in test_corrects], 'r')
-    #pyplot.plot(epochs, [float(i) / len(validation_inputs) for i in validation_corrects], 'g')
-    #pyplot.savefig(path + '/corrects.png')
-    #pyplot.figure()
+    with open(path + '/validation_errors', "w") as f:
+        pickle.dump(validation_errors, f)
+
+    with open(path + '/training_corrects', "w") as f:
+        pickle.dump(training_corrects, f)
+
+    with open(path + '/validation_corrects', "w") as f:
+        pickle.dump(validation_corrects, f)
+
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
-
-    #784,1024,1024,10_activations=TanhActivationFunction,TanhActivationFunction,SigmoidActivationFunction_dropout=0.5,0.5,0.5_maxNorm=4.0_epochs=150_learningRate=0.001_momentum=0.95_regCoefficient=0.0_batchSize=50
     train_wrapper(
         epochs=150,
         learning_rate=0.001,
@@ -327,22 +287,7 @@ if __name__ == "__main__":
         dimensions=[28 * 28, 1024, 1024, 10],
         activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
         dropout_probabilities=[0.2, 0.5, 0.5],
-        max_norm=2.0,
+        max_norm=4.0,
         momentum_coefficient=0.95,
         l2_regularization_coefficient=0.0
     )
-    #convert_and_dump_MNIST()
-
-    #for learning_rate in [0.005, 0.001]:
-    #    for max_norm in [4.0, 6.0]:
-    #        train_wrapper(epochs=150,
-    #                      learning_rate=learning_rate,
-    #                      batch_size=50,
-    #                      dimensions=[28 * 28, 1024, 1024, 10],
-    #                      activation_functions=[TanhActivationFunction(), TanhActivationFunction(), SigmoidActivationFunction()],
-    #                      dropout_probabilities=[0.0, 0.0, 0.0],
-    #                      max_norm=max_norm,
-    #                      momentum_coefficient=0.95,
-    #                      l2_regularization_coefficient=0.0
-    #        )
-
